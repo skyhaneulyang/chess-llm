@@ -4,6 +4,19 @@
 
 ---
 
+## Reproducing
+
+Requires an NVIDIA GPU with 12GB+ VRAM, and Stockfish on PATH.
+
+    pip install -r requirements.txt
+    python extract_games.py          # streams 100k games from Lichess
+    python convert_pgn_dataset.py    # converts to training format
+    python finetune.py               # ~11 hours on an RTX 4070
+    python compare_both.py           # paired evaluation
+
+Game data, model weights, and evaluation dumps are regenerated
+by these scripts rather than committed.
+
 ## Abstract
 
 Can a general-purpose language model be fine-tuned to actually play chess, rather than to produce text that looks like chess? This project answers that question across three parts on a single consumer GPU.
