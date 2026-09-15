@@ -1,0 +1,13 @@
+chess-llm-env/
+*.pgn
+*.zst
+*.jsonl
+*.npy
+*.pt
+*_model/
+run_*/
+chess_lora_*/
+stockfish*.exe
+stockfish/
+__pycache__/
+*.txt
