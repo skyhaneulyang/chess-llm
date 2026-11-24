@@ -1,7 +1,7 @@
 # Teaching a Local LLM to Play Chess
 
 **A three-part study in fine-tuning, evaluation, and knowing when your own numbers are lying to you.**
-Note: Report is AI-generated, this study was AI-assisted.
+AI-Assisted.
 
 ---
 
