@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 MODEL_PATH = sys.argv[1] if len(sys.argv) > 1 else "run_pgn_99186_r16_e1_b2_model"
 LAYER = 31
 NUM_CANDIDATES = 12
-TWO_PLY = True
+TWO_PLY = False 
 
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name=MODEL_PATH, max_seq_length=1024, load_in_4bit=True
@@ -150,16 +150,23 @@ def score_candidate(board, sans, mv):
         board.pop()
 
 
-def search_move(board, sans):
+def search_move(board, sans, return_details=False):
     cands = candidates(board, sans)
-    if not cands:
-        return None, None
-
+    details = []
     best_move, best_score = None, -1.0
+
     for mv in cands:
         score = score_candidate(board, sans, mv)
+        details.append((mv.uci(), score))
+
         if score > best_score:
             best_move, best_score = mv, score
+
+    if not cands:
+        best_score = None
+
+    if return_details:
+        return best_move, best_score, details
 
     return best_move, best_score
 

@@ -3,9 +3,9 @@ import zstandard as zstd
 import io
 import chess.pgn
 
-URL = "https://database.lichess.org/standard/lichess_db_standard_rated_2026-06.pgn.zst"
-OUTPUT_FILE = "games_large.pgn"
-MAX_GAMES = 100000
+URL = "https://database.lichess.org/standard/lichess_db_standard_rated_2026-10.pgn.zst"
+OUTPUT_FILE = "games_test_oct2026.pgn"
+MAX_GAMES = 100
 MIN_RATING = 1500
 
 def stream_pgn_from_url(url):

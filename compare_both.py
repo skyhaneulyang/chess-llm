@@ -4,26 +4,79 @@ import chess
 import chess.pgn
 import chess.engine
 import statistics
+import csv
+
+csv_file = open("validation_results.csv", "w", newline="", encoding="utf-8")
+writer = csv.writer(csv_file)
+candidate_file = open(
+    "candidate_results.csv", "w",
+    newline="", encoding="utf-8"
+)
+
+candidate_writer = csv.writer(candidate_file)
+
+candidate_writer.writerow([
+    "game_id",
+    "ply",
+    "fen",
+    "candidate",
+    "judge_score",
+    "stockfish_cp",
+    "selected"
+])
+
+writer.writerow([
+    "game_id",
+    "ply",
+    "fen",
+    "greedy_move",
+    "search_move",
+    "greedy_legal",
+    "search_legal",
+    "greedy_cp_loss",
+    "search_cp_loss",
+    "human_cp_loss"
+])
 
 hf_logging.set_verbosity_error()
 warnings.filterwarnings("ignore")
 
+
+import torch
+import random
+
+random.seed(42)
+torch.manual_seed(42)
+torch.cuda.manual_seed_all(42)
+
 from search_play import search_move, policy_move, build_prompt  # loads model + head
 
-PGN_FILE = "games_large.pgn"
+PGN_FILE = "games_test_oct2026.pgn"
 NUM_GAMES = 10
 MAX_PLIES = 60
 DEPTH = 10
 BLUNDER = 300
 
 engine = chess.engine.SimpleEngine.popen_uci("stockfish.exe")
+engine.configure({"Threads": 1})
 
+
+score_cache = {}
 
 def score_after(b, move):
+    key = (b.fen(), move.uci())
+
+    if key in score_cache:
+        return score_cache[key]
+
     b.push(move)
-    info = engine.analyse(b, chess.engine.Limit(depth=DEPTH))
-    cp = info["score"].pov(not b.turn).score(mate_score=10000)
-    b.pop()
+    try:
+        info = engine.analyse(b, chess.engine.Limit(depth=DEPTH))
+        cp = info["score"].pov(not b.turn).score(mate_score=10000)
+    finally:
+        b.pop()
+
+    score_cache[key] = cp
     return cp
 
 
@@ -67,7 +120,32 @@ with open(PGN_FILE, encoding="utf-8") as f:
                     g_mv = None
 
             # method 2: candidate generation + value-head search
-            s_mv, _ = search_move(b, sans)
+            s_mv, _, candidate_details = search_move(
+                b, sans, return_details=True
+            )
+            for uci, judge_score in candidate_details:
+                mv = chess.Move.from_uci(uci)
+                sf_score = score_after(b, mv)
+                candidate_writer.writerow([
+                g + 1,
+                ply + 1,
+                b.fen(),
+                uci,
+                judge_score,
+                sf_score,
+                mv == s_mv
+            ])
+            candidate_file.flush()
+
+            print(
+                f"Candidate: {uci}, "
+                f"Judge: {judge_score:.6f}, "
+                f"Stockfish: {sf_score}"
+            )
+            if g_mv is not None and s_mv is not None:
+                print(f"Greedy: {g_mv.uci()}, SF: {score_after(b, g_mv)}")
+                print(f"Search: {s_mv.uci()}, SF: {score_after(b, s_mv)}")
+                print("-" * 40)
 
             total += 1
             if g_mv is None:
@@ -80,7 +158,21 @@ with open(PGN_FILE, encoding="utf-8") as f:
                 search_losses.append(max(best_score - score_after(b, s_mv), 0))
                 human_losses.append(h_loss)
                 phases.append(phase(ply // 2 + 1))
-
+            writer.writerow([
+                g + 1,
+                ply + 1,
+                b.fen(),
+                g_mv.uci() if g_mv is not None else "",
+                s_mv.uci() if s_mv is not None else "",
+                g_mv is not None,
+                s_mv is not None,
+                max(best_score - score_after(b, g_mv), 0)
+                    if g_mv is not None else "",
+                max(best_score - score_after(b, s_mv), 0)
+                    if s_mv is not None else "",
+                h_loss
+            ])
+            csv_file.flush()
             sans.append(b.san(human_move))
             b.push(human_move)
 
